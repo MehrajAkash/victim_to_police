@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Victim — Send Alert</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <main class="card">
+        <h1>Send Emergency Alert</h1>
+        <label>Message (optional)</label>
+        <textarea id="message" rows="4" placeholder="Write a short message..."></textarea>
+        <div class="row">
+            <button id="sendBtn">Send Alert with Location</button>
+            <button id="sendNoLocBtn">Send Alert (No Location)</button>
+        </div>
+        <p id="status" class="muted">Ready</p>
+    </main>
+
+    <!-- Firebase v9 modular SDK -->
+    <script type="module">
+        // TODO: paste your Firebase config object here
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+
+        const sendBtn = document.getElementById('sendBtn');
+        const sendNoLocBtn = document.getElementById('sendNoLocBtn');
+        const messageInput = document.getElementById('message');
+        const status = document.getElementById('status');
+
+
+        function writeAlert(payload) {
+            const alertsRef = ref(db, 'alerts');
+            return push(alertsRef, payload)
+                .then(() => {
+                    status.textContent = 'Alert sent ✓';
+                })
+                .catch(err => {
+                    status.textContent = 'Failed to send: ' + err.message;
+                });
+        }
+
+
+        sendBtn.addEventListener('click', () => {
+            status.textContent = 'Requesting location...';
+            if (!navigator.geolocation) {
+                status.textContent = 'Geolocation not supported in this browser.';
+                return;
+            }
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const payload = {
+                    message: messageInput.value || '',
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    ts: Date.now()
+                };
+                status.textContent = 'Sending...';
+                writeAlert(payload);
+            }, (err) => {
+                status.textContent = 'Location denied or unavailable: ' + err.message;
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        });
+
+
+        sendNoLocBtn.addEventListener('click', () => {
+            const payload = {
+                message: messageInput.value || '',
+                lat: null,
+                lon: null,
+                accuracy: null,
+                ts: Date.now()
+            };
+            status.textContent = 'Sending...';
+            writeAlert(payload);
+        });
+    </script>
+</body>
+
+</html>
